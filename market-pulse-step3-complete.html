@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Market Pulse</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d1117;--bg2:#161b22;--border:#30363d;--text:#e6edf3;
+  --muted:#8b949e;--dim:#484f58;--green:#22d38a;--red:#f04f5f;
+  --blue:#4b9fff;--gold:#f5c842;--orange:#f5874b;--purple:#9b7dff;
+  --sans:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--sans);}
+#app{display:flex;flex-direction:column;height:100%;height:100dvh;}
+#ticker{flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--border);overflow:hidden;height:30px;display:flex;align-items:center;}
+.ticker-inner{display:inline-flex;white-space:nowrap;animation:ticker 35s linear infinite;font-family:var(--mono);font-size:11px;color:var(--muted);}
+.ticker-inner span{padding:0 20px;border-right:1px solid var(--border);}
+@keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+#header{flex-shrink:0;padding:12px 16px 8px;}
+.header-row{display:flex;justify-content:space-between;align-items:flex-start;}
+.app-label{font-family:var(--mono);font-size:8px;letter-spacing:2px;color:var(--dim);}
+.app-title{font-size:20px;font-weight:700;letter-spacing:-0.5px;}
+.app-date{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px;}
+.badge{border:1.5px solid var(--gold);border-radius:8px;padding:5px 10px;text-align:right;}
+.badge-label{font-family:var(--mono);font-size:8px;letter-spacing:2px;color:var(--muted);}
+.badge-value{font-family:var(--mono);font-size:12px;font-weight:700;}
+#tabs{flex-shrink:0;display:flex;overflow-x:auto;background:var(--bg2);border-bottom:1px solid var(--border);scrollbar-width:none;}
+#tabs::-webkit-scrollbar{display:none;}
+.tab{flex-shrink:0;padding:9px 12px;font-size:11px;font-weight:600;color:var(--muted);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;transition:all .2s;}
+.tab.on{color:var(--blue);border-bottom-color:var(--blue);}
+#pages{flex:1;overflow:hidden;position:relative;}
+.page{position:absolute;inset:0;overflow-y:auto;padding:14px 14px calc(64px + var(--safe-b));display:none;}
+.page.on{display:block;}
+#nav{flex-shrink:0;display:flex;background:var(--bg2);border-top:1px solid var(--border);padding-bottom:var(--safe-b);}
+.nav-btn{flex:1;background:none;border:none;color:var(--dim);padding:7px 2px 9px;cursor:pointer;font-size:9px;font-weight:600;display:flex;flex-direction:column;align-items:center;gap:3px;transition:color .2s;}
+.nav-btn.on{color:var(--blue);}
+.nav-icon{font-size:17px;line-height:1;}
+.cards-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px;position:relative;overflow:hidden;}
+.card-accent{position:absolute;top:0;left:0;right:0;height:3px;}
+.card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.card-emoji{font-size:20px;}
+.card-badge{font-family:var(--mono);font-size:10px;font-weight:600;padding:2px 6px;border-radius:20px;}
+.up-bg{background:#22d38a20;color:var(--green);}
+.dn-bg{background:#f04f5f20;color:var(--red);}
+.flat-bg{background:#f5c84220;color:var(--gold);}
+.card-name{font-size:12px;font-weight:600;}
+.card-sub{font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:6px;}
+.card-price{font-family:var(--mono);font-size:22px;font-weight:700;letter-spacing:-0.5px;}
+.card-unit{font-size:11px;color:var(--muted);font-weight:400;}
+.card-chg{font-family:var(--mono);font-size:11px;margin-top:3px;}
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;}
+.panel-title{font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--dim);margin-bottom:10px;}
+.status{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:7px 12px;margin-bottom:12px;font-family:var(--mono);font-size:11px;color:var(--muted);}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.dot.loading{background:var(--gold);animation:blink 1s infinite;}
+.dot.live{background:var(--green);animation:blink 2s infinite;}
+.dot.error{background:var(--red);}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+.refresh-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.refresh-label{font-family:var(--mono);font-size:10px;color:var(--dim);}
+.refresh-time{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--blue);}
+.refresh-progress{height:2px;background:var(--border);border-radius:2px;margin-bottom:12px;}
+.refresh-fill{height:100%;background:var(--blue);border-radius:2px;transition:width 1s linear;}
+.placeholder{text-align:center;padding:60px 20px;color:var(--dim);}
+.ph-icon{font-size:44px;margin-bottom:12px;}
+.ph-text{font-size:13px;line-height:1.7;}
+.sec-title{font-size:17px;font-weight:700;margin-bottom:3px;}
+.sec-sub{font-size:12px;color:var(--muted);margin-bottom:14px;}
+
+/* ── Refuge cards ── */
+.refuge-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px;position:relative;overflow:hidden;}
+.refuge-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.refuge-name{font-size:15px;font-weight:700;}
+.refuge-sub{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px;}
+.refuge-score-big{font-family:var(--mono);font-size:28px;font-weight:700;text-align:right;line-height:1;}
+.refuge-score-label{font-family:var(--mono);font-size:9px;color:var(--muted);text-align:right;margin-top:2px;}
+.refuge-bar-wrap{background:var(--bg3,#1c2330);border-radius:8px;height:12px;overflow:hidden;margin:10px 0 8px;}
+.refuge-bar{height:100%;border-radius:8px;transition:width 1s ease;position:relative;}
+.refuge-bar::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(90deg,transparent 60%,rgba(255,255,255,0.15));border-radius:8px;}
+.refuge-stats{display:flex;gap:0;margin-top:8px;}
+.refuge-stat{flex:1;text-align:center;padding:8px 4px;background:var(--bg);border-radius:8px;}
+.refuge-stat:not(:last-child){margin-right:6px;}
+.refuge-stat-val{font-family:var(--mono);font-size:13px;font-weight:600;}
+.refuge-stat-lbl{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:2px;}
+.refuge-signal{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;margin-top:8px;}
+.refuge-accent{position:absolute;top:0;left:0;bottom:0;width:4px;border-radius:14px 0 0 14px;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="ticker">
+    <div class="ticker-inner">
+      <span style="color:var(--red)">🔴 LIVE</span>
+      <span id="tk-gold">Or —</span><span id="tk-oil">Pétrole —</span>
+      <span id="tk-sp500">S&P 500 —</span><span id="tk-dxy">DXY —</span>
+      <span id="tk-bonds">T-Bond —</span><span>Tensions Iran-Israël</span>
+      <span style="color:var(--red)">🔴 LIVE</span>
+      <span id="tk-gold2">Or —</span><span id="tk-oil2">Pétrole —</span>
+      <span id="tk-sp5002">S&P 500 —</span><span id="tk-dxy2">DXY —</span>
+      <span id="tk-bonds2">T-Bond —</span><span>Tensions Iran-Israël</span>
+    </div>
+  </div>
+
+  <div id="header">
+    <div class="header-row">
+      <div>
+        <div class="app-label">TABLEAU DE BORD FINANCIER</div>
+        <div class="app-title">Market Pulse</div>
+        <div class="app-date" id="dateDisplay">—</div>
+      </div>
+      <div class="badge" id="sentimentBadge">
+        <div class="badge-label">SENTIMENT</div>
+        <div class="badge-value" id="sentimentVal" style="color:var(--gold)">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tabs">
+    <button class="tab on" id="tab-markets" onclick="go('markets')">📊 Marchés</button>
+    <button class="tab"    id="tab-fear"    onclick="go('fear')">😱 Fear &amp; Greed</button>
+    <button class="tab"    id="tab-signal"  onclick="go('signal')">🎯 Signal IA</button>
+    <button class="tab"    id="tab-macro"   onclick="go('macro')">📡 Macro</button>
+    <button class="tab"    id="tab-flows"   onclick="go('flows')">💰 Flux</button>
+    <button class="tab"    id="tab-crisis"  onclick="go('crisis')">📚 Crises</button>
+    <button class="tab"    id="tab-corr"    onclick="go('corr')">🔗 Corrél.</button>
+  </div>
+
+  <div id="pages">
+
+    <div class="page on" id="page-markets">
+      <div class="refresh-bar">
+        <span class="refresh-label">PROCHAINE MAJ</span>
+        <span class="refresh-time" id="countdown">—</span>
+      </div>
+      <div class="refresh-progress"><div class="refresh-fill" id="progressFill" style="width:100%"></div></div>
+      <div class="status"><div class="dot loading" id="statusDot"></div><span id="statusText">Connexion…</span></div>
+      <div class="cards-grid" id="cardsGrid"></div>
+      <div class="panel">
+        <div class="panel-title">SOURCES</div>
+        <div id="summary" style="font-size:12px;line-height:1.9;color:var(--muted)">Chargement…</div>
+      </div>
+    </div>
+
+    <div class="page" id="page-fear">
+      <div class="sec-title">Fear &amp; Greed</div><div class="sec-sub">Étape 3</div>
+      <div class="placeholder"><div class="ph-icon">😱</div><div class="ph-text">Disponible à l'étape 3</div></div>
+    </div>
+    <div class="page" id="page-signal">
+      <div class="sec-title">Signal IA</div><div class="sec-sub">Étape 5</div>
+      <div class="placeholder"><div class="ph-icon">🎯</div><div class="ph-text">Disponible à l'étape 5</div></div>
+    </div>
+    <div class="page" id="page-macro">
+      <div class="sec-title">Macro FRED</div><div class="sec-sub">Étape 4</div>
+      <div class="placeholder"><div class="ph-icon">📡</div><div class="ph-text">Disponible à l'étape 4</div></div>
+    </div>
+    <div class="page" id="page-flows">
+      <div class="sec-title">Zones de Refuge</div>
+      <div class="sec-sub">Où fuient les investisseurs ?</div>
+      <div class="status" style="margin-bottom:14px"><div class="dot loading" id="flowsDot"></div><span id="flowsText">Chargement historique 1 mois…</span></div>
+      <div id="flowsCards"></div>
+      <div class="panel" style="margin-top:4px">
+        <div class="panel-title">MÉTHODOLOGIE</div>
+        <div style="font-size:11px;line-height:1.8;color:var(--muted)">
+          Score 0–10 basé sur :<br>
+          <strong style="color:var(--text)">Momentum 1 mois (×0.4)</strong> — tendance de fond sur le mois<br>
+          <strong style="color:var(--text)">Vitesse mouvement (×0.6)</strong> — variation %/jour sur 2j, 5j, 10j<br>
+          Sources : GLD (or), TLT (obligations), DX=F (dollar) — Yahoo Finance
+        </div>
+      </div>
+    </div>
+    <div class="page" id="page-crisis">
+      <div class="sec-title">Crises Historiques</div>
+      <div class="placeholder"><div class="ph-icon">📚</div><div class="ph-text">Bientôt disponible</div></div>
+    </div>
+    <div class="page" id="page-corr">
+      <div class="sec-title">Corrélations</div><div class="sec-sub">Étape 7</div>
+      <div class="placeholder"><div class="ph-icon">🔗</div><div class="ph-text">Disponible à l'étape 7</div></div>
+    </div>
+
+  </div>
+
+  <div id="nav">
+    <button class="nav-btn on" id="nav-markets" onclick="go('markets')"><span class="nav-icon">📊</span>Marchés</button>
+    <button class="nav-btn"    id="nav-fear"    onclick="go('fear')"><span class="nav-icon">😱</span>F&amp;G</button>
+    <button class="nav-btn"    id="nav-signal"  onclick="go('signal')"><span class="nav-icon">🎯</span>Signal</button>
+    <button class="nav-btn"    id="nav-macro"   onclick="go('macro')"><span class="nav-icon">📡</span>Macro</button>
+    <button class="nav-btn"    id="nav-flows"   onclick="go('flows')"><span class="nav-icon">💰</span>Flux</button>
+    <button class="nav-btn"    id="nav-crisis"  onclick="go('crisis')"><span class="nav-icon">📚</span>Crises</button>
+    <button class="nav-btn"    id="nav-corr"    onclick="go('corr')"><span class="nav-icon">🔗</span>Corrél.</button>
+  </div>
+
+</div>
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+const PROXY   = 'https://api.allorigins.win/get?url=';
+const YF      = 'https://query1.finance.yahoo.com/v8/finance/chart/';
+const MBOUM   = 'https://api.mboum.com/v1/markets/quote';
+const MB_KEY  = '393|aHbSwc6fBr01wG7ihkPBWyJtjQfgEjEwwK0ZqEGd';
+const REFRESH = 60;
+
+// ── Définition des actifs ─────────────────────────────────────────────────────
+const ASSETS = {
+  gold: {
+    label:'Or', sub:'GC=F futures', unit:'$/oz', color:'#f5c842', emoji:'🥇',
+    fallback: 5111.90,
+    fetch: async () => {
+      // Yahoo GC=F encodé avec %3D (confirmé fonctionnel)
+      const url = PROXY + encodeURIComponent(YF + 'GC%3DF?interval=1m&range=1d');
+      const r   = await fetch(url);
+      const o   = await r.json();
+      const d   = JSON.parse(o.contents);
+      return d?.chart?.result?.[0]?.meta?.regularMarketPrice || null;
+    }
+  },
+  oil: {
+    label:'Pétrole WTI', sub:'CL=F futures', unit:'$/bbl', color:'#f5874b', emoji:'🛢️',
+    fallback: 95.22,
+    fetch: async () => {
+      const url = PROXY + encodeURIComponent(YF + 'CL%3DF?interval=1m&range=1d');
+      const r   = await fetch(url);
+      const o   = await r.json();
+      const d   = JSON.parse(o.contents);
+      return d?.chart?.result?.[0]?.meta?.regularMarketPrice || null;
+    }
+  },
+  sp500: {
+    label:'S&P 500', sub:'SPY ETF ×10', unit:'pts', color:'#4b9fff', emoji:'📈',
+    fallback: 6660,
+    fetch: async () => {
+      const url = PROXY + encodeURIComponent(YF + 'SPY?interval=1m&range=1d');
+      const r   = await fetch(url);
+      const o   = await r.json();
+      const d   = JSON.parse(o.contents);
+      const p   = d?.chart?.result?.[0]?.meta?.regularMarketPrice;
+      return p ? p * 10 : null;
+    }
+  },
+  dxy: {
+    label:'Dollar DXY', sub:'DX=F futures', unit:'', color:'#22d38a', emoji:'💵',
+    fallback: 99.615,
+    fetch: async () => {
+      const url = PROXY + encodeURIComponent(YF + 'DX%3DF?interval=1m&range=1d');
+      const r   = await fetch(url);
+      const o   = await r.json();
+      const d   = JSON.parse(o.contents);
+      return d?.chart?.result?.[0]?.meta?.regularMarketPrice || null;
+    }
+  },
+  bonds: {
+    label:'T-Bond 10Y', sub:'^TNX taux', unit:'%', color:'#9b7dff', emoji:'🏦',
+    fallback: 4.273,
+    fetch: async () => {
+      // ^TNX retourne le taux directement (ex: 4.273)
+      const url = PROXY + encodeURIComponent(YF + '%5ETNX?interval=1m&range=1d');
+      const r   = await fetch(url);
+      const o   = await r.json();
+      const d   = JSON.parse(o.contents);
+      return d?.chart?.result?.[0]?.meta?.regularMarketPrice || null;
+    }
+  },
+};
+
+// ── État ──────────────────────────────────────────────────────────────────────
+const state = {};
+Object.keys(ASSETS).forEach(k => {
+  state[k] = {price: ASSETS[k].fallback, prev: 0, live: false, src: '—'};
+});
+let lastRefresh = null;
+let countdown   = REFRESH;
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+const TABS = ['markets','fear','signal','macro','flows','crisis','corr'];
+function go(tab){
+  TABS.forEach(t => {
+    document.getElementById('page-'+t).className = 'page'+(t===tab?' on':'');
+    document.getElementById('tab-'+t).className  = 'tab' +(t===tab?' on':'');
+    document.getElementById('nav-'+t).className  = 'nav-btn'+(t===tab?' on':'');
+  });
+}
+
+// ── Date ──────────────────────────────────────────────────────────────────────
+function tickDate(){
+  document.getElementById('dateDisplay').textContent =
+    new Date().toLocaleString('fr-CA',{weekday:'long',day:'numeric',month:'long',
+      hour:'2-digit',minute:'2-digit',second:'2-digit',timeZoneName:'short'});
+}
+tickDate();
+setInterval(tickDate, 1000);
+
+// ── Refresh ───────────────────────────────────────────────────────────────────
+async function fetchAll(){
+  setStatus('loading','Mise à jour…');
+  let ok = 0;
+
+  for(const [key, asset] of Object.entries(ASSETS)){
+    try{
+      const p = await asset.fetch();
+      if(p && p > 0){
+        state[key].prev  = state[key].price;
+        state[key].price = p;
+        state[key].live  = true;
+        ok++;
+      }
+    } catch(e){
+      console.warn(key, e.message);
+    }
+  }
+
+  lastRefresh = new Date();
+  countdown   = REFRESH;
+
+  if(ok >= 4)     setStatus('live', ok+'/5 actifs en temps réel');
+  else if(ok > 0) setStatus('live', ok+'/5 live — reste en fallback');
+  else            setStatus('error','Erreur réseau — prix de référence');
+
+  render();
+}
+
+// ── Format ────────────────────────────────────────────────────────────────────
+function fmt(p, key){
+  if(key==='bonds') return p.toFixed(3);
+  if(key==='dxy')   return p.toFixed(2);
+  if(p >= 1000)     return p.toLocaleString('fr-CA',{maximumFractionDigits:0});
+  if(p >= 100)      return p.toFixed(2);
+  return p.toFixed(2);
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render(){
+  document.getElementById('cardsGrid').innerHTML =
+    Object.keys(state).map(key => {
+      const d   = state[key];
+      const a   = ASSETS[key];
+      const chg = d.price - d.prev;
+      const pct = d.prev ? chg / d.prev * 100 : 0;
+      const up  = chg >= 0;
+      const flat= Math.abs(pct) < 0.005;
+      const cls = flat ? 'flat-bg' : up ? 'up-bg' : 'dn-bg';
+      const src = d.live
+        ? '<span style="color:var(--green);font-size:9px">● live</span>'
+        : '<span style="color:var(--dim);font-size:9px">● réf.</span>';
+      return `<div class="card">
+        <div class="card-accent" style="background:${a.color}"></div>
+        <div class="card-top">
+          <span class="card-emoji">${a.emoji}</span>
+          <span class="card-badge ${cls}">${up?'▲':'▼'} ${up?'+':''}${pct.toFixed(2)}%</span>
+        </div>
+        <div class="card-name">${a.label}</div>
+        <div class="card-sub">${a.sub}</div>
+        <div class="card-price" style="color:${a.color}">${fmt(d.price,key)} <span class="card-unit">${a.unit}</span></div>
+        <div class="card-chg" style="color:${up?'var(--green)':'var(--red)'}">${up?'+':''}${fmt(Math.abs(chg),key)} ${src}</div>
+      </div>`;
+    }).join('');
+
+  // Ticker
+  const labels = {
+    gold:  'Or '      + fmt(state.gold.price,'gold')   + ' $/oz',
+    oil:   'Pétrole ' + fmt(state.oil.price,'oil')     + ' $/bbl',
+    sp500: 'S&P 500 ' + fmt(state.sp500.price,'sp500') + ' pts',
+    dxy:   'DXY ~'    + fmt(state.dxy.price,'dxy'),
+    bonds: 'T-Bond '  + fmt(state.bonds.price,'bonds') + '%',
+  };
+  Object.keys(labels).forEach(k => {
+    document.getElementById('tk-'+k).textContent     = labels[k];
+    document.getElementById('tk-'+k+'2').textContent = labels[k];
+  });
+
+  // Résumé sources
+  const time  = lastRefresh
+    ? lastRefresh.toLocaleTimeString('fr-CA',{hour:'2-digit',minute:'2-digit',second:'2-digit'})
+    : '—';
+  const rows = [
+    {k:'gold',  src:'Yahoo Finance GC=F'},
+    {k:'oil',   src:'Yahoo Finance CL=F'},
+    {k:'sp500', src:'Yahoo Finance SPY×10'},
+    {k:'dxy',   src:'Yahoo DX=F futures'},
+    {k:'bonds', src:'Yahoo Finance ^TNX'},
+  ].map(r => {
+    const dot = state[r.k].live ? '🟢' : '🟡';
+    return `${dot} <strong>${ASSETS[r.k].label}</strong> — ${r.src}`;
+  }).join('<br>');
+  document.getElementById('summary').innerHTML =
+    rows + `<br><span style="color:var(--dim)">MAJ : ${time}</span>`;
+
+  // Sentiment
+  const spUp   = state.sp500.price >= state.sp500.prev;
+  const goldUp = state.gold.price  >= state.gold.prev;
+  let sent, col;
+  if(spUp && !goldUp)      { sent='RISK-ON';  col='var(--green)'; }
+  else if(!spUp && goldUp) { sent='RISK-OFF'; col='var(--red)';   }
+  else                     { sent='NEUTRE';   col='var(--gold)';  }
+  const sv = document.getElementById('sentimentVal');
+  sv.textContent = sent;
+  sv.style.color = col;
+  document.getElementById('sentimentBadge').style.borderColor = col;
+}
+
+function setStatus(type, text){
+  document.getElementById('statusDot').className    = 'dot '+type;
+  document.getElementById('statusText').textContent = text;
+}
+
+function tickCountdown(){
+  if(countdown > 0) countdown--;
+  const s = countdown % 60;
+  const m = Math.floor(countdown / 60);
+  document.getElementById('countdown').textContent   = m>0 ? m+':'+String(s).padStart(2,'0') : s+'s';
+  document.getElementById('progressFill').style.width = (countdown/REFRESH*100)+'%';
+  if(countdown === 0) fetchAll();
+}
+
+
+// ── Zones de Refuge ───────────────────────────────────────────────────────────
+const REFUGE_ASSETS = [
+  {
+    key:'gold', label:'Or', sub:'GLD ETF', emoji:'🥇', color:'#f5c842',
+    ticker:'GLD',
+    // TLT obligations: quand prix monte → investisseurs fuient vers obligations
+    // GLD or: quand prix monte → refuge or
+    // UUP dollar: quand prix monte → refuge dollar
+    direction: 'up'  // score monte si prix monte
+  },
+  {
+    key:'bonds', label:'Obligations', sub:'TLT ETF', emoji:'🏦', color:'#9b7dff',
+    ticker:'TLT',
+    direction: 'up'  // TLT prix monte = investisseurs achètent obligations
+  },
+  {
+    key:'dollar', label:'Dollar US', sub:'DX=F futures', emoji:'💵', color:'#22d38a',
+    ticker:'DX%3DF',
+    direction: 'up'
+  },
+];
+
+let refugeData = {};
+let refugeLoaded = false;
+
+async function fetchRefuge(){
+  document.getElementById('flowsDot').className = 'dot loading';
+  document.getElementById('flowsText').textContent = "Chargement 1 mois d'historique…";
+
+  let ok = 0;
+
+  for(const asset of REFUGE_ASSETS){
+    // Délai entre appels pour éviter rate limit allorigins
+    if(REFUGE_ASSETS.indexOf(asset) > 0) await new Promise(r=>setTimeout(r,700));
+    try{
+      // Proxy obligatoire pour les appels historiques (CORS)
+      const url = PROXY + encodeURIComponent(YF + asset.ticker + '?interval=1d&range=1mo');
+      const r   = await fetch(url);
+      const o   = await r.json();
+      const d   = JSON.parse(o.contents);
+      const result = d?.chart?.result?.[0];
+      if(!result) continue;
+
+      const closes  = result.indicators?.quote?.[0]?.close  || [];
+      const volumes = result.indicators?.quote?.[0]?.volume || [];
+
+      // Filtrer nulls
+      const validCloses = closes.filter(c => c !== null && c > 0);
+      if(validCloses.length < 10) continue;
+
+      const n   = validCloses.length;
+      const c0  = validCloses[n - 1];
+      const c3  = validCloses[Math.max(0, n - 4)];  // il y a 3j
+      const c5  = validCloses[Math.max(0, n - 6)];
+      const c10 = validCloses[Math.max(0, n - 11)];
+      const c1mo= validCloses[0];
+
+      // ── Variations ──────────────────────────────────────────────────
+      const var3j  = (c0 - c3)  / c3  * 100;  // fenêtre optimale
+      const var5j  = (c0 - c5)  / c5  * 100;
+      const var10j = (c0 - c10) / c10 * 100;
+      const var1mo = (c0 - c1mo)/ c1mo* 100;
+
+      // ── Vitesse sur 3 jours (fenêtre optimale) ──────────────────────
+      // -9% en 3j = crise de liquidité, +3% en 3j = refuge actif
+      const vitesse3j = var3j / 3;  // %/jour sur la fenêtre 3j
+
+      // Score vitesse 0-5 : -0.5%/j → 0, 0%/j → 2.5, +0.5%/j → 5
+      const scoreVitesse  = Math.max(0, Math.min(5, (vitesse3j + 0.5) / 0.2));
+
+      // Score momentum 1 mois 0-5 : -3% → 0, 0% → 2.5, +3% → 5
+      const scoreMomentum = Math.max(0, Math.min(5, (var1mo + 3) / 1.2));
+
+      // Score final 0-10 (×2 car chaque composante est sur 0-5)
+      const finalScore = Math.max(0, Math.min(10,
+        (scoreVitesse * 0.6 + scoreMomentum * 0.4) * 2
+      ));
+
+      const pct5d  = var3j;   // affiche la variation 3j (fenêtre optimale)
+      const pct2mo = var1mo;
+      const volRatio = vitesse3j;
+
+      refugeData[asset.key] = {
+        score: finalScore,
+        pct5d, pct2mo, volRatio,
+        currentPrice, avgVol, lastVol,
+        days: validCloses.length
+      };
+      ok++;
+    } catch(e){
+      console.warn('Refuge', asset.key, e.message);
+    }
+  }
+
+  refugeLoaded = ok > 0;
+
+  if(ok === 3){
+    document.getElementById('flowsDot').className = 'dot live';
+    document.getElementById('flowsText').textContent = '3/3 actifs refuge — données 1 mois';
+  } else if(ok > 0){
+    document.getElementById('flowsDot').className = 'dot live';
+    document.getElementById('flowsText').textContent = ok + '/3 actifs chargés';
+  } else {
+    document.getElementById('flowsDot').className = 'dot error';
+    document.getElementById('flowsText').textContent = 'Erreur de chargement';
+  }
+
+  renderRefuge();
+}
+
+function refugeSignal(score){
+  if(score >= 7.5) return {label:'🔥 Refuge actif',   sub:'refuge',  bg:'#f04f5f22', color:'#f04f5f'};
+  if(score >= 5.5) return {label:'⚡ Afflux modéré',  sub:'refuge',  bg:'#f5c84222', color:'#f5c842'};
+  if(score >= 3.5) return {label:'😐 Neutre',          sub:'neutre',  bg:'#4b9fff22', color:'#4b9fff'};
+  if(score >= 1.5) return {label:'❄️ Déserté',         sub:'fuite',   bg:'#8b949e22', color:'#8b949e'};
+  return             {label:'💨 Fuite',                sub:'fuite',   bg:'#9b7dff22', color:'#9b7dff'};
+}
+
+function scoreColor(score){
+  if(score >= 7.5) return '#f04f5f';
+  if(score >= 5.5) return '#f5c842';
+  if(score >= 3.5) return '#4b9fff';
+  return '#484f58';
+}
+
+function renderRefuge(){
+  const container = document.getElementById('flowsCards');
+  if(!refugeLoaded){ container.innerHTML=''; return; }
+
+  // Trier par score décroissant
+  const sorted = REFUGE_ASSETS
+    .filter(a => refugeData[a.key])
+    .sort((a,b) => refugeData[b.key].score - refugeData[a.key].score);
+
+  container.innerHTML = sorted.map(asset => {
+    const d     = refugeData[asset.key];
+    const score = d.score;
+    const sig   = refugeSignal(score);
+    const col   = scoreColor(score);
+    const barW  = Math.round(score / 10 * 100);
+    const up5   = d.pct5d >= 0;
+    const up2mo = d.pct2mo >= 0;
+
+    return `<div class="refuge-card">
+      <div class="refuge-accent" style="background:${asset.color}"></div>
+      <div class="refuge-top">
+        <div>
+          <div class="refuge-name">${asset.emoji} ${asset.label}</div>
+          <div class="refuge-sub">${asset.sub} · ${d.days}j d'historique</div>
+        </div>
+        <div>
+          <div class="refuge-score-big" style="color:${col}">${score.toFixed(1)}</div>
+          <div class="refuge-score-label">/ 10</div>
+        </div>
+      </div>
+      <div class="refuge-bar-wrap">
+        <div class="refuge-bar" style="width:${barW}%;background:${col}"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+        <div class="refuge-signal" style="background:${sig.bg};color:${sig.color}">${sig.label}</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">${sig.sub}</div>
+      </div>
+      <div class="refuge-stats">
+        <div class="refuge-stat">
+          <div class="refuge-stat-val" style="color:${up5?'var(--green)':'var(--red)'}">${up5?'+':''}${d.pct5d.toFixed(2)}%</div>
+          <div class="refuge-stat-lbl">3 jours</div>
+        </div>
+        <div class="refuge-stat">
+          <div class="refuge-stat-val" style="color:${up2mo?'var(--green)':'var(--red)'}">${up2mo?'+':''}${d.pct2mo.toFixed(2)}%</div>
+          <div class="refuge-stat-lbl">1 mois</div>
+        </div>
+        <div class="refuge-stat">
+          <div class="refuge-stat-val" style="color:${d.volRatio>0?'var(--green)':d.volRatio<0?'var(--red)':'var(--muted)'}">${d.volRatio>0?'+':''}${d.volRatio.toFixed(3)}%/j</div>
+          <div class="refuge-stat-lbl">vitesse</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+render();
+fetchAll();
+fetchRefuge();
+setInterval(tickCountdown, 1000);
+</script>
+</body>
+</html>
