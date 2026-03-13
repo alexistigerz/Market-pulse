@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gold Velocity — Mboum</title>
+<style>
+body{background:#0d1117;color:#e6edf3;font-family:monospace;padding:16px;font-size:12px;}
+h2{color:#f5c842;margin-bottom:4px;}
+p{color:#8b949e;margin-bottom:16px;font-size:11px;}
+.row{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:10px;margin-bottom:6px;}
+.ok{color:#22d38a;}.warn{color:#f5c842;}.err{color:#f04f5f;}
+table{width:100%;border-collapse:collapse;margin-top:8px;}
+th{color:#8b949e;font-size:10px;padding:4px 6px;text-align:left;border-bottom:1px solid #30363d;}
+td{padding:4px 6px;font-size:11px;border-bottom:1px solid #1c2330;}
+.up{color:#22d38a;}.dn{color:#f04f5f;}
+.section{color:#4b9fff;font-size:13px;font-weight:bold;margin:16px 0 8px;}
+</style>
+</head>
+<body>
+<h2>🥇 Analyse Vitesse — Or via Mboum</h2>
+<p>Endpoint: /v1/markets/stock/history?symbol=GLD&type=ETF</p>
+<div id="out"></div>
+<script>
+const KEY  = '393|aHbSwc6fBr01wG7ihkPBWyJtjQfgEjEwwK0ZqEGd';
+const BASE = 'https://api.mboum.com';
+const out  = document.getElementById('out');
+
+function log(html){ const d=document.createElement('div'); d.className='row'; d.innerHTML=html; out.appendChild(d); }
+
+async function run(){
+  log('<span class="warn">⏳ Chargement historique GLD via Mboum…</span>');
+
+  // Endpoint historique Mboum
+  const url = BASE + '/v1/markets/stock/history?symbol=GLD&type=ETF&interval=1d&range=3mo&diffandsplits=false&apikey=' + KEY;
+  let data;
+  try{
+    const r = await fetch(url);
+    const t = await r.text();
+    data = JSON.parse(t);
+    out.lastChild.innerHTML = '<span class="ok">✅ Réponse reçue</span>';
+    // Afficher structure brute pour comprendre le format
+    log('<span class="warn">Structure: </span><pre style="font-size:9px;color:#8b949e">' + JSON.stringify(data).slice(0,500) + '…</pre>');
+  } catch(e){
+    log('<span class="err">❌ Erreur: ' + e.message + '</span>');
+    return;
+  }
+
+  // Extraire les closes selon la structure Mboum
+  let closes = [];
+  let dates  = [];
+
+  // Format possible 1: data.body = [{date, close}, ...]
+  if(Array.isArray(data?.body)){
+    data.body.forEach(row => {
+      const c = row.close || row.adjclose || row.c;
+      const d = row.date  || row.t || row.timestamp;
+      if(c && c > 0){ closes.push(parseFloat(c)); dates.push(d); }
+    });
+  }
+  // Format possible 2: data.body.items
+  else if(data?.body?.items){
+    Object.entries(data.body.items).forEach(([date, row]) => {
+      const c = row.close || row.adjclose;
+      if(c && c > 0){ closes.push(parseFloat(c)); dates.push(date); }
+    });
+  }
+  // Format possible 3: data.body directement objet date→valeurs
+  else if(data?.body && typeof data.body === 'object'){
+    Object.entries(data.body).forEach(([date, row]) => {
+      if(typeof row === 'object'){
+        const c = row.close || row.adjclose || row['4. close'];
+        if(c && parseFloat(c) > 0){ closes.push(parseFloat(c)); dates.push(date); }
+      }
+    });
+  }
+
+  log(`<span class="${closes.length>0?'ok':'err'}">${closes.length>0?'✅':'❌'} ${closes.length} closes extraits</span>`);
+
+  if(closes.length < 10){
+    log('<span class="err">❌ Pas assez de données pour analyser</span>');
+    return;
+  }
+
+  // Garder les 63 derniers jours (~3 mois ouvrables)
+  if(closes.length > 63){ closes = closes.slice(-63); dates = dates.slice(-63); }
+
+  analyze(closes, dates);
+}
+
+function analyze(closes, dates){
+  log(`<span class="ok">✅ Analyse sur ${closes.length} jours — dernier prix: $${closes[closes.length-1]?.toFixed(2)}</span>`);
+
+  out.insertAdjacentHTML('beforeend','<div class="section">📊 Distribution des moves par fenêtre</div>');
+
+  const windows = [1,2,3,5,7,10];
+  for(const w of windows){
+    const moves=[];
+    for(let i=w;i<closes.length;i++) moves.push((closes[i]-closes[i-w])/closes[i-w]*100);
+    const abs=moves.map(Math.abs);
+    const avg=(abs.reduce((a,b)=>a+b,0)/abs.length).toFixed(2);
+    const max=Math.max(...abs).toFixed(2);
+    const s15=abs.filter(v=>v>1.5).length;
+    const s3 =abs.filter(v=>v>3.0).length;
+    const col=w<=2?'#f04f5f':w<=5?'#f5c842':'#22d38a';
+    log(`<span style="color:${col}">📅 ${w}j</span> — Moy: <b>${avg}%</b> | Max: <b>${max}%</b> | >1.5%: <b>${s15}x</b> | >3%: <b>${s3}x</b>`);
+  }
+
+  out.insertAdjacentHTML('beforeend','<div class="section">🔥 Top 12 moves avec fenêtre optimale</div>');
+
+  const bigMoves=[];
+  for(let i=10;i<closes.length;i++){
+    const v5=(closes[i]-closes[i-5])/closes[i-5]*100;
+    if(Math.abs(v5)>1.0){
+      const rates=[1,2,3,5].map(w=>({
+        w, pct:(closes[i]-closes[i-w])/closes[i-w]*100,
+        r:Math.abs((closes[i]-closes[i-w])/closes[i-w]*100)/w
+      }));
+      rates.sort((a,b)=>b.r-a.r);
+      bigMoves.push({
+        date: dates[i]||'?',
+        v5: v5.toFixed(2),
+        bestW: rates[0].w,
+        rate: rates[0].r.toFixed(3),
+        pct1: rates.find(r=>r.w===1)?.pct.toFixed(2),
+        pct2: rates.find(r=>r.w===2)?.pct.toFixed(2),
+        pct3: rates.find(r=>r.w===3)?.pct.toFixed(2),
+      });
+    }
+  }
+  bigMoves.sort((a,b)=>Math.abs(b.v5)-Math.abs(a.v5));
+
+  let tbl='<table><tr><th>Date</th><th>5j</th><th>1j</th><th>2j</th><th>3j</th><th>Opt.</th><th>%/j</th></tr>';
+  bigMoves.slice(0,12).forEach(m=>{
+    const cls=parseFloat(m.v5)>=0?'up':'dn';
+    tbl+=`<tr>
+      <td>${String(m.date).slice(0,10)}</td>
+      <td class="${cls}">${m.v5}%</td>
+      <td class="${parseFloat(m.pct1)>=0?'up':'dn'}">${m.pct1}%</td>
+      <td class="${parseFloat(m.pct2)>=0?'up':'dn'}">${m.pct2}%</td>
+      <td class="${parseFloat(m.pct3)>=0?'up':'dn'}">${m.pct3}%</td>
+      <td style="color:#f5c842;font-weight:bold">${m.bestW}j</td>
+      <td>${m.rate}%/j</td>
+    </tr>`;
+  });
+  tbl+='</table>';
+  out.insertAdjacentHTML('beforeend',`<div class="row">${tbl}</div>`);
+
+  // Conclusion statistique
+  const wCount={1:0,2:0,3:0,5:0};
+  bigMoves.forEach(m=>{if(wCount[m.bestW]!==undefined)wCount[m.bestW]++;});
+  const best=Object.entries(wCount).sort((a,b)=>b[1]-a[1]);
+  out.insertAdjacentHTML('beforeend',`<div class="row">
+    <span class="ok">✅ Fenêtre optimale : <b style="color:#f5c842">${best[0][0]}j</b> (${best[0][1]}/${bigMoves.length} moves)</span><br>
+    <span style="color:#8b949e">2e: ${best[1]?.[0]}j (${best[1]?.[1]} fois) — 3e: ${best[2]?.[0]}j (${best[2]?.[1]} fois)</span>
+  </div>`);
+}
+
+run();
+</script>
+</body>
+</html>
